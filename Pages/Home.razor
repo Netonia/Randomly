@@ -11,22 +11,20 @@
 <PageTitle>Random Data Generator</PageTitle>
 
 <div class="container-fluid p-3">
-    <h1 class="mb-4">Random Data Generator</h1>
-    
     <div class="row">
         <!-- Left Panel: Field Management -->
         <div class="col-md-5">
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5>Field Definitions</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
+                    <div class="float-end">
                         <button class="btn btn-primary btn-sm" @onclick="AddField">
                             <i class="bi bi-plus-circle"></i> Add Field
                         </button>
                     </div>
-                    
+                    <h5>Field Definitions</h5>
+                </div>
+                <div class="card-body">
+
                     @if (fields.Count == 0)
                     {
                         <p class="text-muted">No fields defined. Click "Add Field" to start.</p>
@@ -40,8 +38,8 @@
                                     <div class="card-body p-2">
                                         <div class="row g-2">
                                             <div class="col-5">
-                                                <input type="text" class="form-control form-control-sm" 
-                                                       placeholder="Field Name" 
+                                                <input type="text" class="form-control form-control-sm"
+                                                       placeholder="Field Name"
                                                        @bind="field.Name" />
                                             </div>
                                             <div class="col-5">
@@ -83,9 +81,14 @@
                     }
                 </div>
             </div>
-            
+
             <div class="card mb-3">
                 <div class="card-header">
+                    <div class="float-end">
+                        <button class="btn btn-success" @onclick="GenerateData" disabled="@(fields.Count == 0)">
+                            <i class="bi bi-gear-fill"></i> Generate Data
+                        </button>
+                    </div>
                     <h5>Generation Settings</h5>
                 </div>
                 <div class="card-body">
@@ -94,12 +97,9 @@
                         <input type="number" class="form-control" @bind="numberOfRows" min="1" max="10000" />
                         <small class="text-muted">Maximum: 10,000 rows</small>
                     </div>
-                    <button class="btn btn-success w-100" @onclick="GenerateData" disabled="@(fields.Count == 0)">
-                        <i class="bi bi-gear-fill"></i> Generate Data
-                    </button>
                 </div>
             </div>
-            
+
             @if (generatedData.Count > 0)
             {
                 <div class="card">
@@ -139,21 +139,12 @@
                 </div>
             }
         </div>
-        
+
         <!-- Right Panel: Liquid Template Editor and Preview -->
         <div class="col-md-7">
             <div class="card mb-3">
                 <div class="card-header">
-                    <h5>Liquid Template Editor</h5>
-                </div>
-                <div class="card-body">
-                    <div style="height: 400px; border: 1px solid #dee2e6;">
-                        <StandaloneCodeEditor @ref="editor" 
-                                             Id="template-editor"
-                                             ConstructionOptions="EditorConstructionOptions"
-                                             OnDidInit="OnEditorInit" />
-                    </div>
-                    <div class="mt-2">
+                    <div class="float-end">
                         <button class="btn btn-info btn-sm" @onclick="LoadDefaultTemplate">
                             <i class="bi bi-arrow-clockwise"></i> Load Default Template
                         </button>
@@ -161,26 +152,22 @@
                             <i class="bi bi-eye"></i> Update Preview
                         </button>
                     </div>
-                </div>
-            </div>
-            
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5>Preview</h5>
+                    <h5>Liquid Template Editor</h5>
                 </div>
                 <div class="card-body">
-                    <pre style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">@renderedOutput</pre>
+                    <div class="monaco-editor-container">
+                        <StandaloneCodeEditor @ref="editor"
+                                              Id="template-editor"
+                                              ConstructionOptions="EditorConstructionOptions"
+                                              OnDidInit="OnEditorInit" />
+                    </div>
                 </div>
             </div>
-            
-            @if (!string.IsNullOrEmpty(renderedOutput) && !renderedOutput.StartsWith("Template"))
-            {
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Export Options</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="btn-group w-100" role="group">
+
+            <div class="card mb-3">
+                <div class="card-header">
+                    <div class="float-end">
+                        <div class="btn-group" role="group">
                             <button class="btn btn-outline-primary" @onclick="CopyToClipboard">
                                 <i class="bi bi-clipboard"></i> Copy
                             </button>
@@ -194,13 +181,25 @@
                                 <i class="bi bi-file-earmark-code"></i> Export JSON
                             </button>
                         </div>
+                    </div>
+                    <h5>Preview</h5>
+                </div>
+                <div class="card-body">
+                    <pre style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">@renderedOutput</pre>
+                </div>
+            </div>
+
+            @* @if (!string.IsNullOrEmpty(renderedOutput) && !renderedOutput.StartsWith("Template"))
+            {
+                <div class="card">
+                    <div class="card-body">
                         @if (!string.IsNullOrEmpty(exportMessage))
                         {
                             <div class="alert alert-success mt-2 mb-0">@exportMessage</div>
                         }
                     </div>
                 </div>
-            }
+            } *@
         </div>
     </div>
 </div>
@@ -213,6 +212,28 @@
     private string renderedOutput = string.Empty;
     private string exportMessage = string.Empty;
     private StandaloneCodeEditor? editor;
+
+    protected override void OnInitialized()
+    {
+        // Add 3 default fields
+        fields.Add(new FieldDefinition
+        {
+            Name = "FirstName",
+            Type = "firstName"
+        });
+
+        fields.Add(new FieldDefinition
+        {
+            Name = "LastName",
+            Type = "lastName"
+        });
+
+        fields.Add(new FieldDefinition
+        {
+            Name = "Email",
+            Type = "email"
+        });
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -268,7 +289,7 @@
     private async Task GenerateData()
     {
         if (fields.Count == 0) return;
-        
+
         exportMessage = string.Empty;
         generatedData = DataService.GenerateData(fields, Math.Min(numberOfRows, 10000));
         await UpdatePreview();
@@ -276,13 +297,11 @@
 
     private void LoadDefaultTemplate()
     {
-        liquidTemplate = @"{% for item in items %}
-{% for property in item %}
-{{ property.Key }}: {{ property.Value }}
+        liquidTemplate = @"{%- for item in items %}
+{%- for property in item %}{{ property[0] }}: {{ property[1] }}
 {% endfor %}
----
 {% endfor %}";
-        
+
         if (editor != null)
         {
             _ = editor.SetValue(liquidTemplate);
@@ -296,7 +315,7 @@
             liquidTemplate = await editor.GetValue();
             await JSRuntime.InvokeVoidAsync("localStorage.setItem", "liquidTemplate", liquidTemplate);
         }
-        
+
         if (generatedData.Count > 0)
         {
             renderedOutput = TemplateService.RenderTemplate(liquidTemplate, generatedData);
