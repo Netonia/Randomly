@@ -130,7 +130,7 @@
                                             @foreach (var field in fields)
                                             {
                                                 var dict = (IDictionary<string, object?>)row;
-                                                <td>@dict[field.Name]</td>
+                                                <td>@(dict.ContainsKey(field.Name) ? dict[field.Name] : "-")</td>
                                             }
                                         </tr>
                                     }
@@ -292,7 +292,7 @@
     private void LoadDefaultTemplate()
     {
         liquidTemplate = @"{%- for item in items %}
-{%- for property in item %}{{ property[0] }}: {{ property[1] }}
+{%- for field in item %}{{ field[0] }}: {{ field[1] }}
 {% endfor %}
 {% endfor %}";
 
