@@ -1,0 +1,354 @@
+﻿@page "/"
+@using Randomly.Models
+@using Randomly.Services
+@using System.Dynamic
+@using BlazorMonaco
+@using BlazorMonaco.Editor
+@inject RandomDataService DataService
+@inject TemplateService TemplateService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Random Data Generator</PageTitle>
+
+<div class="container-fluid p-3">
+    <h1 class="mb-4">Random Data Generator</h1>
+    
+    <div class="row">
+        <!-- Left Panel: Field Management -->
+        <div class="col-md-5">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Field Definitions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <button class="btn btn-primary btn-sm" @onclick="AddField">
+                            <i class="bi bi-plus-circle"></i> Add Field
+                        </button>
+                    </div>
+                    
+                    @if (fields.Count == 0)
+                    {
+                        <p class="text-muted">No fields defined. Click "Add Field" to start.</p>
+                    }
+                    else
+                    {
+                        <div class="field-list">
+                            @foreach (var field in fields)
+                            {
+                                <div class="card mb-2">
+                                    <div class="card-body p-2">
+                                        <div class="row g-2">
+                                            <div class="col-5">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                       placeholder="Field Name" 
+                                                       @bind="field.Name" />
+                                            </div>
+                                            <div class="col-5">
+                                                <select class="form-select form-select-sm" @bind="field.Type">
+                                                    <option value="firstName">First Name</option>
+                                                    <option value="lastName">Last Name</option>
+                                                    <option value="fullName">Full Name</option>
+                                                    <option value="email">Email</option>
+                                                    <option value="phoneNumber">Phone Number</option>
+                                                    <option value="city">City</option>
+                                                    <option value="country">Country</option>
+                                                    <option value="address">Address</option>
+                                                    <option value="zipCode">Zip Code</option>
+                                                    <option value="state">State</option>
+                                                    <option value="integer">Integer</option>
+                                                    <option value="decimal">Decimal</option>
+                                                    <option value="boolean">Boolean</option>
+                                                    <option value="date">Date</option>
+                                                    <option value="dateTime">Date Time</option>
+                                                    <option value="uuid">UUID</option>
+                                                    <option value="company">Company</option>
+                                                    <option value="jobTitle">Job Title</option>
+                                                    <option value="username">Username</option>
+                                                    <option value="url">URL</option>
+                                                    <option value="lorem">Lorem</option>
+                                                    <option value="paragraph">Paragraph</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-2 text-end">
+                                                <button class="btn btn-danger btn-sm" @onclick="() => RemoveField(field)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Generation Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Number of Rows</label>
+                        <input type="number" class="form-control" @bind="numberOfRows" min="1" max="10000" />
+                        <small class="text-muted">Maximum: 10,000 rows</small>
+                    </div>
+                    <button class="btn btn-success w-100" @onclick="GenerateData" disabled="@(fields.Count == 0)">
+                        <i class="bi bi-gear-fill"></i> Generate Data
+                    </button>
+                </div>
+            </div>
+            
+            @if (generatedData.Count > 0)
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Generated Data Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        @foreach (var field in fields)
+                                        {
+                                            <th>@field.Name</th>
+                                        }
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var row in generatedData.Take(10))
+                                    {
+                                        <tr>
+                                            @foreach (var field in fields)
+                                            {
+                                                var dict = (IDictionary<string, object?>)row;
+                                                <td>@dict[field.Name]</td>
+                                            }
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (generatedData.Count > 10)
+                        {
+                            <small class="text-muted">Showing first 10 of @generatedData.Count rows</small>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+        
+        <!-- Right Panel: Liquid Template Editor and Preview -->
+        <div class="col-md-7">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Liquid Template Editor</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 400px; border: 1px solid #dee2e6;">
+                        <StandaloneCodeEditor @ref="editor" 
+                                             Id="template-editor"
+                                             ConstructionOptions="EditorConstructionOptions"
+                                             OnDidInit="OnEditorInit" />
+                    </div>
+                    <div class="mt-2">
+                        <button class="btn btn-info btn-sm" @onclick="LoadDefaultTemplate">
+                            <i class="bi bi-arrow-clockwise"></i> Load Default Template
+                        </button>
+                        <button class="btn btn-secondary btn-sm" @onclick="UpdatePreview" disabled="@(generatedData.Count == 0)">
+                            <i class="bi bi-eye"></i> Update Preview
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5>Preview</h5>
+                </div>
+                <div class="card-body">
+                    <pre style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 4px;">@renderedOutput</pre>
+                </div>
+            </div>
+            
+            @if (!string.IsNullOrEmpty(renderedOutput) && !renderedOutput.StartsWith("Template"))
+            {
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Export Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-outline-primary" @onclick="CopyToClipboard">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ExportAsText">
+                                <i class="bi bi-file-text"></i> Export Text
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ExportAsCsv">
+                                <i class="bi bi-file-earmark-csv"></i> Export CSV
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick="ExportAsJson">
+                                <i class="bi bi-file-earmark-code"></i> Export JSON
+                            </button>
+                        </div>
+                        @if (!string.IsNullOrEmpty(exportMessage))
+                        {
+                            <div class="alert alert-success mt-2 mb-0">@exportMessage</div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<FieldDefinition> fields = new();
+    private List<ExpandoObject> generatedData = new();
+    private int numberOfRows = 10;
+    private string liquidTemplate = "{% for item in items %}\n{{ item }}\n{% endfor %}";
+    private string renderedOutput = string.Empty;
+    private string exportMessage = string.Empty;
+    private StandaloneCodeEditor? editor;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Load saved template from localStorage
+            var savedTemplate = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "liquidTemplate");
+            if (!string.IsNullOrEmpty(savedTemplate))
+            {
+                liquidTemplate = savedTemplate;
+            }
+            else
+            {
+                LoadDefaultTemplate();
+            }
+        }
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "liquid",
+            Value = liquidTemplate,
+            Theme = "vs-light",
+            Minimap = new EditorMinimapOptions { Enabled = false }
+        };
+    }
+
+    private async Task OnEditorInit()
+    {
+        if (editor != null)
+        {
+            await editor.SetValue(liquidTemplate);
+        }
+    }
+
+    private void AddField()
+    {
+        fields.Add(new FieldDefinition
+        {
+            Name = $"field{fields.Count + 1}",
+            Type = "firstName"
+        });
+    }
+
+    private void RemoveField(FieldDefinition field)
+    {
+        fields.Remove(field);
+    }
+
+    private async Task GenerateData()
+    {
+        if (fields.Count == 0) return;
+        
+        exportMessage = string.Empty;
+        generatedData = DataService.GenerateData(fields, Math.Min(numberOfRows, 10000));
+        await UpdatePreview();
+    }
+
+    private void LoadDefaultTemplate()
+    {
+        liquidTemplate = @"{% for item in items %}
+{% for property in item %}
+{{ property.Key }}: {{ property.Value }}
+{% endfor %}
+---
+{% endfor %}";
+        
+        if (editor != null)
+        {
+            _ = editor.SetValue(liquidTemplate);
+        }
+    }
+
+    private async Task UpdatePreview()
+    {
+        if (editor != null)
+        {
+            liquidTemplate = await editor.GetValue();
+            await JSRuntime.InvokeVoidAsync("localStorage.setItem", "liquidTemplate", liquidTemplate);
+        }
+        
+        if (generatedData.Count > 0)
+        {
+            renderedOutput = TemplateService.RenderTemplate(liquidTemplate, generatedData);
+        }
+        else
+        {
+            renderedOutput = "No data generated yet. Click 'Generate Data' first.";
+        }
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", renderedOutput);
+            exportMessage = "Copied to clipboard!";
+            await Task.Delay(3000);
+            exportMessage = string.Empty;
+            StateHasChanged();
+        }
+        catch
+        {
+            exportMessage = "Failed to copy to clipboard";
+        }
+    }
+
+    private async Task ExportAsText()
+    {
+        await DownloadFile("generated-data.txt", renderedOutput, "text/plain");
+    }
+
+    private async Task ExportAsCsv()
+    {
+        var csvData = DataService.ExportToCsv(generatedData);
+        await DownloadFile("generated-data.csv", csvData, "text/csv");
+    }
+
+    private async Task ExportAsJson()
+    {
+        var jsonData = DataService.ExportToJson(generatedData);
+        await DownloadFile("generated-data.json", jsonData, "application/json");
+    }
+
+    private async Task DownloadFile(string filename, string content, string contentType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var base64 = Convert.ToBase64String(bytes);
+        await JSRuntime.InvokeVoidAsync("downloadFile", filename, base64, contentType);
+        exportMessage = $"Downloaded {filename}";
+        await Task.Delay(3000);
+        exportMessage = string.Empty;
+        StateHasChanged();
+    }
+}
+
